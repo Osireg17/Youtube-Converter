@@ -56,9 +56,18 @@ public class JobService {
 
         String downloadUrl = null;
         if (job.getStatus() == JobStatus.DONE) {
-            downloadUrl = storageService.generatePresignedDownloadUrl(job.getStorageObjectKey());
+            downloadUrl = storageService.generatePresignedDownloadUrl(getRequiredStorageObjectKey(job));
         }
 
         return new JobStatusResponse(job.getId(), job.getStatus(), downloadUrl);
+    }
+
+    private String getRequiredStorageObjectKey(Job job) {
+        String storageObjectKey = job.getStorageObjectKey();
+        if (storageObjectKey == null || storageObjectKey.isBlank()) {
+            throw new IllegalStateException(
+                    "Job " + job.getId() + " is marked DONE but has no storageObjectKey");
+        }
+        return storageObjectKey;
     }
 }
