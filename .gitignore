@@ -1,0 +1,27 @@
+# Environment
+.env
+
+# macOS
+.DS_Store
+
+# Java / Maven
+target/
+*.class
+*.jar
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+dist/
+
+# Node / Frontend
+node_modules/
+dist/
+.next/
+
+# IDEs
+.idea/
+.vscode/
+*.iml
