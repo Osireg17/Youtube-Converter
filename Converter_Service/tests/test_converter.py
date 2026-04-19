@@ -28,7 +28,7 @@ def test_build_ydl_opts_mp3():
 
 def test_build_ydl_opts_mp4():
     opts = converter.build_ydl_opts("MP4", "/tmp/test")
-    assert "bestvideo" in opts["format"]
+    assert opts["format"] == "bestvideo*+bestaudio/best"
     assert opts["merge_output_format"] == "mp4"
     assert "postprocessors" not in opts
 

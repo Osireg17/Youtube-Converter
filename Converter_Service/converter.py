@@ -88,7 +88,7 @@ def build_ydl_opts(output_format: str, output_dir: str) -> dict:
             "no_warnings": True,
         }
     return {
-        "format": "bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best",
+        "format": "bestvideo*+bestaudio/best",
         "outtmpl": outtmpl,
         "merge_output_format": "mp4",
         "quiet": True,
