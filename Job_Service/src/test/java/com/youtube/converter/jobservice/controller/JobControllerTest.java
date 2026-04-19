@@ -13,7 +13,9 @@ import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
+import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -23,13 +25,19 @@ import java.util.stream.Stream;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.options;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 
 @WebMvcTest(JobController.class)
+@TestPropertySource(properties = "cors.allowed-origins=https://youtube-converter.up.railway.app, https://preview.youtube-converter.up.railway.app")
 class JobControllerTest {
+
+    private static final String PRODUCTION_ORIGIN = "https://youtube-converter.up.railway.app";
+    private static final String PREVIEW_ORIGIN = "https://preview.youtube-converter.up.railway.app";
 
     @Autowired
     private MockMvc mockMvc;
@@ -39,6 +47,36 @@ class JobControllerTest {
 
     @MockitoBean
     private JobService jobService;
+
+    @Test
+    void createJob_preflightAllowedOrigin_returnsCorsHeaders() throws Exception {
+        mockMvc.perform(options("/api/jobs")
+                        .header(HttpHeaders.ORIGIN, PRODUCTION_ORIGIN)
+                        .header(HttpHeaders.ACCESS_CONTROL_REQUEST_METHOD, "POST")
+                        .header(HttpHeaders.ACCESS_CONTROL_REQUEST_HEADERS, "Content-Type"))
+                .andExpect(status().isOk())
+                .andExpect(header().string(HttpHeaders.ACCESS_CONTROL_ALLOW_ORIGIN, PRODUCTION_ORIGIN))
+                .andExpect(header().string(HttpHeaders.ACCESS_CONTROL_ALLOW_METHODS, "GET,POST,OPTIONS"));
+    }
+
+    @Test
+    void createJob_preflightAllowsTrimmedOriginFromList() throws Exception {
+        mockMvc.perform(options("/api/jobs")
+                        .header(HttpHeaders.ORIGIN, PREVIEW_ORIGIN)
+                        .header(HttpHeaders.ACCESS_CONTROL_REQUEST_METHOD, "POST")
+                        .header(HttpHeaders.ACCESS_CONTROL_REQUEST_HEADERS, "Content-Type"))
+                .andExpect(status().isOk())
+                .andExpect(header().string(HttpHeaders.ACCESS_CONTROL_ALLOW_ORIGIN, PREVIEW_ORIGIN));
+    }
+
+    @Test
+    void createJob_preflightRejectsUnlistedOrigin() throws Exception {
+        mockMvc.perform(options("/api/jobs")
+                        .header(HttpHeaders.ORIGIN, "https://malicious.example.com")
+                        .header(HttpHeaders.ACCESS_CONTROL_REQUEST_METHOD, "POST")
+                        .header(HttpHeaders.ACCESS_CONTROL_REQUEST_HEADERS, "Content-Type"))
+                .andExpect(status().isForbidden());
+    }
 
     @ParameterizedTest
     @MethodSource("invalidCreateJobRequests")
