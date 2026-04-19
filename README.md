@@ -49,6 +49,9 @@ pip install -r requirements.txt
 python main.py
 ```
 
+Install `ffmpeg` locally before starting `Converter_Service`.
+Example: `brew install ffmpeg` on macOS or `sudo apt-get install ffmpeg` on Debian/Ubuntu.
+
 ### 4. Frontend
 
 ```bash
@@ -95,6 +98,7 @@ Each directory (`Job_Service`, `Converter_Service`, `frontend`) is a separate Ra
 - Object Storage (Railway plugin)
 
 Set the environment variables listed above on each service. For the frontend, set `VITE_API_BASE_URL` if you are not using a reverse proxy to route `/api/*` requests.
+`Converter_Service` is deployed from a Dockerfile that installs `ffmpeg`, which is required for MP3 extraction and MP4 muxing in production.
 For this repository's Railway deployment, the frontend should call the Job Service directly by setting:
 
 ```bash
