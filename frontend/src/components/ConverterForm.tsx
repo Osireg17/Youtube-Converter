@@ -1,3 +1,4 @@
+import { useEffect } from "react"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
@@ -23,22 +24,31 @@ const formSchema = z.object({
   outputFormat: z.enum(["MP4", "MP3"]),
 })
 
-type FormValues = z.infer<typeof formSchema>
+export type FormValues = z.infer<typeof formSchema>
 
 interface ConverterFormProps {
-  onSuccess: (jobId: string) => void
+  initialValues: FormValues
+  onSuccess: (result: { jobId: string; request: FormValues }) => void
 }
 
-export function ConverterForm({ onSuccess }: ConverterFormProps) {
+export function ConverterForm({ initialValues, onSuccess }: ConverterFormProps) {
   const {
     register,
     handleSubmit,
+    reset,
     setValue,
+    watch,
     formState: { errors },
   } = useForm<FormValues>({
     resolver: zodResolver(formSchema),
-    defaultValues: { youtubeUrl: "", outputFormat: "MP4" },
+    defaultValues: initialValues,
   })
+
+  const outputFormat = watch("outputFormat")
+
+  useEffect(() => {
+    reset(initialValues)
+  }, [initialValues, reset])
 
   const mutation = useMutation({
     mutationFn: async (data: FormValues) => {
@@ -49,7 +59,10 @@ export function ConverterForm({ onSuccess }: ConverterFormProps) {
       })
       if (!response.ok) throw new Error("Failed to create job")
       const json = await response.json()
-      return json.jobId as string
+      return {
+        jobId: json.jobId as string,
+        request: data,
+      }
     },
     onSuccess,
   })
@@ -71,9 +84,14 @@ export function ConverterForm({ onSuccess }: ConverterFormProps) {
       </div>
 
       <Select
-        defaultValue="MP4"
+        value={outputFormat}
         disabled={mutation.isPending}
-        onValueChange={(value) => setValue("outputFormat", value as "MP4" | "MP3")}
+        onValueChange={(value) =>
+          setValue("outputFormat", value as "MP4" | "MP3", {
+            shouldDirty: true,
+            shouldValidate: true,
+          })
+        }
       >
         <SelectTrigger className="w-full">
           <SelectValue placeholder="Select format" />
