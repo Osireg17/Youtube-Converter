@@ -118,6 +118,27 @@ def test_upload_to_s3_mp3_key_and_content_type():
     )
 
 
+@patch.dict(os.environ, {
+    "AWS_S3_BUCKET_NAME": "aws-test-bucket",
+    "AWS_ACCESS_KEY_ID": "aws-key",
+    "AWS_SECRET_ACCESS_KEY": "aws-secret",
+    "AWS_DEFAULT_REGION": "auto",
+    "AWS_ENDPOINT_URL": "https://t3.storageapi.dev",
+}, clear=True)
+def test_upload_to_s3_uses_aws_prefixed_env_names():
+    mock_s3 = MagicMock()
+    with patch("boto3.client", return_value=mock_s3):
+        key = converter.upload_to_s3("/tmp/fake.mp3", "aws-uuid", "MP3")
+
+    assert key == "conversions/aws-uuid.mp3"
+    mock_s3.upload_file.assert_called_once_with(
+        "/tmp/fake.mp3",
+        "aws-test-bucket",
+        "conversions/aws-uuid.mp3",
+        ExtraArgs={"ContentType": "audio/mpeg"},
+    )
+
+
 # ---------------------------------------------------------------------------
 # update_job_status
 # ---------------------------------------------------------------------------

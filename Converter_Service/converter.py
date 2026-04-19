@@ -25,17 +25,29 @@ STATUS_FAILED     = 3
 AUDIO_BITRATE = "192"
 
 
+def get_env(*names: str, default: str | None = None) -> str:
+    for name in names:
+        value = os.environ.get(name)
+        if value:
+            return value
+
+    if default is not None:
+        return default
+
+    raise KeyError(names[0])
+
+
 def get_db_connection():
     return psycopg2.connect(os.environ["DATABASE_URL"])
 
 
 def get_s3_client():
     kwargs = {
-        "aws_access_key_id":     os.environ["ACCESS_KEY_ID"],
-        "aws_secret_access_key": os.environ["SECRET_ACCESS_KEY"],
-        "region_name":           os.environ["REGION"],
+        "aws_access_key_id": get_env("ACCESS_KEY_ID", "AWS_ACCESS_KEY_ID"),
+        "aws_secret_access_key": get_env("SECRET_ACCESS_KEY", "AWS_SECRET_ACCESS_KEY"),
+        "region_name": get_env("REGION", "AWS_DEFAULT_REGION"),
     }
-    endpoint = os.environ.get("ENDPOINT", "")
+    endpoint = get_env("ENDPOINT", "AWS_ENDPOINT_URL", default="")
     if endpoint:
         kwargs["endpoint_url"] = endpoint
     return boto3.client("s3", **kwargs)
@@ -100,7 +112,7 @@ def upload_to_s3(local_path: str, job_id: str, output_format: str) -> str:
     ext = "mp3" if output_format == "MP3" else "mp4"
     object_key = f"conversions/{job_id}.{ext}"
     content_type = "audio/mpeg" if output_format == "MP3" else "video/mp4"
-    bucket = os.environ["BUCKET_NAME"]
+    bucket = get_env("BUCKET_NAME", "BUCKET", "AWS_S3_BUCKET_NAME")
     s3 = get_s3_client()
     s3.upload_file(local_path, bucket, object_key, ExtraArgs={"ContentType": content_type})
     logger.info("Uploaded job %s to s3://%s/%s", job_id, bucket, object_key)
