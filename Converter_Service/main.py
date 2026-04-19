@@ -1,23 +1,29 @@
 import os
+import threading
+from contextlib import asynccontextmanager
+
 import uvicorn
 from fastapi import FastAPI
 from dotenv import load_dotenv
 
+import converter
+
 load_dotenv()
 
-app = FastAPI(title="Converter Service")
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    thread = threading.Thread(target=converter.start_rabbitmq_consumer, daemon=True)
+    thread.start()
+    yield
+
+
+app = FastAPI(title="Converter Service", lifespan=lifespan)
 
 
 @app.get("/health")
 def health():
     return {"status": "ok"}
-
-
-def start_rabbitmq_consumer():
-    # TODO: Implement RabbitMQ consumer loop (BE-07)
-    # Connect to RABBITMQ_URL, declare the jobs queue, and begin consuming
-    # messages. For each message, trigger the conversion pipeline.
-    pass
 
 
 if __name__ == "__main__":
