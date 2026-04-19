@@ -6,6 +6,7 @@ import { useMutation } from "@tanstack/react-query"
 
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { buildApiUrl } from "@/lib/api"
 import {
   Select,
   SelectContent,
@@ -52,7 +53,7 @@ export function ConverterForm({ initialValues, onSuccess }: ConverterFormProps) 
 
   const mutation = useMutation({
     mutationFn: async (data: FormValues) => {
-      const response = await fetch("/api/jobs", {
+      const response = await fetch(buildApiUrl("/jobs"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data),

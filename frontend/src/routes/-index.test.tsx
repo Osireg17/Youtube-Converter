@@ -235,19 +235,28 @@ describe("IndexPage", () => {
     expect(screen.queryByText("Conversion failed.")).not.toBeInTheDocument()
   })
 
-  it("shows an inline error when status polling fails and keeps the job card mounted", async () => {
-    vi.mocked(fetch)
-      .mockImplementationOnce(() => createFetchResponse({ status: 201, body: { jobId: JOB_ID } }))
-      .mockImplementationOnce(() => createFetchResponse({ ok: false, status: 404 }))
+  it(
+    "shows an inline error when status polling fails and keeps the job card mounted",
+    async () => {
+      vi.mocked(fetch)
+        .mockImplementationOnce(() => createFetchResponse({ status: 201, body: { jobId: JOB_ID } }))
+        .mockImplementation(() => createFetchResponse({ ok: false, status: 404 }))
 
-    renderIndexPage()
+      renderIndexPage()
 
-    await submitJob()
+      await submitJob()
 
-    expect(await screen.findByText(/Unable to refresh job status\./)).toBeInTheDocument()
-    expect(screen.getByText(new RegExp(JOB_ID))).toBeInTheDocument()
-    expect(screen.queryByRole("button", { name: "Convert" })).not.toBeInTheDocument()
-  })
+      await waitFor(
+        () => {
+          expect(screen.getByText(/Unable to refresh job status\./)).toBeInTheDocument()
+        },
+        { timeout: 16000 }
+      )
+      expect(screen.getByText(new RegExp(JOB_ID))).toBeInTheDocument()
+      expect(screen.queryByRole("button", { name: "Convert" })).not.toBeInTheDocument()
+    },
+    20000
+  )
 
   it("shows a retry path when DONE is missing a download URL", async () => {
     const user = userEvent.setup()

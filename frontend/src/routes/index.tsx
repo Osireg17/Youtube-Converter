@@ -2,6 +2,7 @@ import { useState } from "react"
 import { useQuery } from "@tanstack/react-query"
 import { createFileRoute } from "@tanstack/react-router"
 import { ConverterForm, type FormValues } from "@/components/ConverterForm"
+import { buildApiUrl } from "@/lib/api"
 import { Button, buttonVariants } from "@/components/ui/button"
 
 export const Route = createFileRoute("/")({
@@ -35,7 +36,7 @@ export function IndexPage() {
     retry: 3,
     retryDelay: (attempt) => Math.min(1000 * 2 ** attempt, 10000),
     queryFn: async (): Promise<JobStatusResponse> => {
-      const response = await fetch(`/api/jobs/${activeJobId}/status`)
+      const response = await fetch(buildApiUrl(`/jobs/${activeJobId}/status`))
 
       if (!response.ok) {
         throw new Error("Failed to fetch job status")

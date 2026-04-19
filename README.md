@@ -57,7 +57,7 @@ npm install
 npm run dev
 ```
 
-The frontend dev server proxies `/api/*` to `http://localhost:8080`.
+If `VITE_API_BASE_URL` is not set, the frontend dev server proxies `/api/*` to `http://localhost:8080`.
 
 ## Environment Variables
 
@@ -95,6 +95,17 @@ Each directory (`Job_Service`, `Converter_Service`, `frontend`) is a separate Ra
 - Object Storage (Railway plugin)
 
 Set the environment variables listed above on each service. For the frontend, set `VITE_API_BASE_URL` if you are not using a reverse proxy to route `/api/*` requests.
+For this repository's Railway deployment, the frontend should call the Job Service directly by setting:
+
+```bash
+VITE_API_BASE_URL=https://job-production-ce60.up.railway.app
+```
+
+Also set `ALLOWED_ORIGINS` on `Job_Service` to the deployed frontend origin, for example:
+
+```bash
+ALLOWED_ORIGINS=https://youtube-converter.up.railway.app
+```
 
 ## API
 
