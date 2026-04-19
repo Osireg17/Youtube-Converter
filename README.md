@@ -101,11 +101,31 @@ For this repository's Railway deployment, the frontend should call the Job Servi
 VITE_API_BASE_URL=https://job-production-ce60.up.railway.app
 ```
 
-Also set `ALLOWED_ORIGINS` on `Job_Service` to the deployed frontend origin, for example:
+Because the browser calls `Job_Service` directly in production, `Job_Service` must include every deployed frontend origin in `ALLOWED_ORIGINS`. For the current production frontend, set:
 
 ```bash
 ALLOWED_ORIGINS=https://youtube-converter.up.railway.app
 ```
+
+If you add preview or staging frontends, append them as a comma-separated list:
+
+```bash
+ALLOWED_ORIGINS=https://youtube-converter.up.railway.app,https://youtube-converter-preview.up.railway.app
+```
+
+After updating Railway env vars and redeploying `Job_Service`, verify the browser preflight succeeds before testing the UI:
+
+```bash
+curl -i -X OPTIONS 'https://job-production-ce60.up.railway.app/api/jobs' \
+  -H 'Origin: https://youtube-converter.up.railway.app' \
+  -H 'Access-Control-Request-Method: POST' \
+  -H 'Access-Control-Request-Headers: content-type'
+```
+
+Expected result:
+
+- No `403 Invalid CORS request`
+- `Access-Control-Allow-Origin: https://youtube-converter.up.railway.app`
 
 ## API
 
