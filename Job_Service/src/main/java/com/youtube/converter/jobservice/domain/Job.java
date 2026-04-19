@@ -81,6 +81,10 @@ public class Job {
         this.outputFormat = outputFormat;
     }
 
+    public void setId(UUID id) {
+        this.id = id;
+    }
+
     public JobStatus getStatus() {
         return status;
     }
