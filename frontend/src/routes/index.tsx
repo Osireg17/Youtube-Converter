@@ -1,4 +1,5 @@
-import { useState } from "react"
+import { useEffect, useState } from "react"
+import { useQuery } from "@tanstack/react-query"
 import { createFileRoute } from "@tanstack/react-router"
 import { ConverterForm } from "@/components/ConverterForm"
 
@@ -6,8 +7,60 @@ export const Route = createFileRoute("/")({
   component: IndexPage,
 })
 
-function IndexPage() {
+type JobStatus = "PENDING" | "PROCESSING" | "DONE" | "FAILED"
+
+type JobStatusResponse = {
+  jobId: string
+  status: JobStatus
+  downloadUrl?: string
+}
+
+function isTerminalStatus(status: JobStatus) {
+  return status === "DONE" || status === "FAILED"
+}
+
+export function IndexPage() {
   const [jobId, setJobId] = useState<string | null>(null)
+  const [statusLabel, setStatusLabel] = useState("Job queued")
+
+  const statusQuery = useQuery({
+    queryKey: ["job-status", jobId],
+    enabled: jobId !== null,
+    retry: false,
+    queryFn: async (): Promise<JobStatusResponse> => {
+      const response = await fetch(`/api/jobs/${jobId}/status`)
+
+      if (!response.ok) {
+        throw new Error("Failed to fetch job status")
+      }
+
+      return response.json() as Promise<JobStatusResponse>
+    },
+    refetchInterval: (query) => {
+      const status = query.state.data?.status
+
+      if (status && isTerminalStatus(status)) {
+        return false
+      }
+
+      return 4000
+    },
+  })
+
+  useEffect(() => {
+    if (jobId === null) {
+      setStatusLabel("Job queued")
+      return
+    }
+
+    if (statusQuery.data?.status === "PENDING") {
+      setStatusLabel("Job queued")
+    }
+
+    if (statusQuery.data?.status === "PROCESSING") {
+      setStatusLabel("Processing")
+    }
+  }, [jobId, statusQuery.data?.status])
 
   return (
     <main className="relative flex min-h-svh flex-col items-center justify-center overflow-hidden px-4">
@@ -53,8 +106,11 @@ function IndexPage() {
             <div className="flex flex-col items-center gap-3 py-4 text-center">
               <span className="inline-block h-2.5 w-2.5 rounded-full bg-primary animate-pulse" />
               <p className="text-sm text-muted-foreground">
-                Job queued — <span className="font-mono text-foreground">{jobId}</span>
+                {statusLabel} — <span className="font-mono text-foreground">{jobId}</span>
               </p>
+              {statusQuery.isError && (
+                <p className="text-sm text-destructive">Unable to refresh job status.</p>
+              )}
             </div>
           )}
         </div>
