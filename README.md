@@ -70,12 +70,12 @@ If `VITE_API_BASE_URL` is not set, the frontend dev server proxies `/api/*` to `
 |---|---|
 | `DATABASE_URL` | JDBC URL, e.g. `jdbc:postgresql://localhost:5432/converter` |
 | `RABBITMQ_URL` | AMQP URL, e.g. `amqp://user:pass@localhost:5672/` |
-| `ACCESS_KEY_ID` | S3 access key |
-| `SECRET_ACCESS_KEY` | S3 secret key |
-| `REGION` | S3 region |
-| `ENDPOINT` | S3 endpoint override (for Railway Object Storage or MinIO) |
-| `BUCKET_NAME` | S3 bucket name |
-| `ALLOWED_ORIGINS` | Comma-separated CORS origins, e.g. `https://my-app.railway.app` |
+| `ACCESS_KEY_ID` or `AWS_ACCESS_KEY_ID` | S3 access key |
+| `SECRET_ACCESS_KEY` or `AWS_SECRET_ACCESS_KEY` | S3 secret key |
+| `REGION` or `AWS_DEFAULT_REGION` | S3 region |
+| `ENDPOINT` or `AWS_ENDPOINT_URL` | S3 endpoint override (for Railway Object Storage or MinIO) |
+| `BUCKET_NAME`, `BUCKET`, or `AWS_S3_BUCKET_NAME` | S3 bucket name |
+| `ALLOWED_ORIGINS` or `CORS_ALLOWED_ORIGINS` | Comma-separated CORS origins, e.g. `https://my-app.railway.app` |
 
 ### Converter_Service
 
@@ -83,11 +83,11 @@ If `VITE_API_BASE_URL` is not set, the frontend dev server proxies `/api/*` to `
 |---|---|
 | `DATABASE_URL` | PostgreSQL URL, e.g. `postgresql://user:pass@localhost:5432/converter` |
 | `RABBITMQ_URL` | AMQP URL |
-| `ACCESS_KEY_ID` | S3 access key |
-| `SECRET_ACCESS_KEY` | S3 secret key |
-| `REGION` | S3 region |
-| `ENDPOINT` | S3 endpoint override |
-| `BUCKET_NAME` | S3 bucket name |
+| `ACCESS_KEY_ID` or `AWS_ACCESS_KEY_ID` | S3 access key |
+| `SECRET_ACCESS_KEY` or `AWS_SECRET_ACCESS_KEY` | S3 secret key |
+| `REGION` or `AWS_DEFAULT_REGION` | S3 region |
+| `ENDPOINT` or `AWS_ENDPOINT_URL` | S3 endpoint override |
+| `BUCKET_NAME`, `BUCKET`, or `AWS_S3_BUCKET_NAME` | S3 bucket name |
 
 ## Deploying to Railway
 
@@ -105,16 +105,16 @@ For this repository's Railway deployment, the frontend should call the Job Servi
 VITE_API_BASE_URL=https://job-production-ce60.up.railway.app
 ```
 
-Because the browser calls `Job_Service` directly in production, `Job_Service` must include every deployed frontend origin in `ALLOWED_ORIGINS`. For the current production frontend, set:
+Because the browser calls `Job_Service` directly in production, `Job_Service` must include every deployed frontend origin in `ALLOWED_ORIGINS` or `CORS_ALLOWED_ORIGINS`. For the current production frontend, set:
 
 ```bash
-ALLOWED_ORIGINS=https://youtube-converter.up.railway.app
+CORS_ALLOWED_ORIGINS=https://youtube-converter.up.railway.app
 ```
 
 If you add preview or staging frontends, append them as a comma-separated list:
 
 ```bash
-ALLOWED_ORIGINS=https://youtube-converter.up.railway.app,https://youtube-converter-preview.up.railway.app
+CORS_ALLOWED_ORIGINS=https://youtube-converter.up.railway.app,https://youtube-converter-preview.up.railway.app
 ```
 
 After updating Railway env vars and redeploying `Job_Service`, verify the browser preflight succeeds before testing the UI:
