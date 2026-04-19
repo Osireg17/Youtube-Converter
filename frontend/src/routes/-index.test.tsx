@@ -51,6 +51,14 @@ async function submitJob(user = userEvent.setup()) {
   await user.click(screen.getByRole("button", { name: "Convert" }))
 }
 
+async function selectOutputFormat(
+  user: ReturnType<typeof userEvent.setup>,
+  formatLabel: "MP4 (Video)" | "MP3 (Audio)"
+) {
+  await user.click(screen.getByRole("combobox"))
+  await user.click(await screen.findByRole("option", { name: formatLabel }))
+}
+
 describe("IndexPage", () => {
   beforeEach(() => {
     vi.stubGlobal("fetch", vi.fn())
@@ -118,8 +126,9 @@ describe("IndexPage", () => {
     expect(screen.getByText(new RegExp(JOB_ID))).toBeInTheDocument()
   }, 10000)
 
-  it("stops polling when the job reaches DONE", async () => {
+  it("renders the done state with a direct download link and stops polling", async () => {
     const user = userEvent.setup()
+    const downloadUrl = "https://example.com/file.mp4"
     vi.mocked(fetch)
       .mockImplementationOnce(() => createFetchResponse({ status: 201, body: { jobId: JOB_ID } }))
       .mockImplementationOnce(() =>
@@ -127,7 +136,7 @@ describe("IndexPage", () => {
       )
       .mockImplementationOnce(() =>
         createFetchResponse({
-          body: { jobId: JOB_ID, status: "DONE", downloadUrl: "https://example.com/file.mp4" },
+          body: { jobId: JOB_ID, status: "DONE", downloadUrl },
         })
       )
 
@@ -143,10 +152,38 @@ describe("IndexPage", () => {
     await sleep(4500)
 
     expect(fetch).toHaveBeenCalledTimes(3)
-    expect(screen.getByText(/Processing/)).toBeInTheDocument()
+    expect(screen.getByText("Your file is ready.")).toBeInTheDocument()
+    expect(screen.getByText(/Download links expire after 1 hour/)).toBeInTheDocument()
+    expect(screen.getByText(new RegExp(JOB_ID))).toBeInTheDocument()
+
+    const downloadLink = screen.getByRole("link", { name: "Download MP4" })
+    expect(downloadLink).toHaveAttribute("href", downloadUrl)
+    expect(downloadLink).toHaveAttribute("download")
   }, 12000)
 
-  it("stops polling when the job reaches FAILED", async () => {
+  it("uses the submitted format in the done state download label", async () => {
+    const user = userEvent.setup()
+    vi.mocked(fetch)
+      .mockImplementationOnce(() => createFetchResponse({ status: 201, body: { jobId: JOB_ID } }))
+      .mockImplementationOnce(() =>
+        createFetchResponse({
+          body: { jobId: JOB_ID, status: "DONE", downloadUrl: "https://example.com/file.mp3" },
+        })
+      )
+
+    renderIndexPage()
+
+    await user.type(
+      screen.getByPlaceholderText("https://www.youtube.com/watch?v=..."),
+      "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
+    )
+    await selectOutputFormat(user, "MP3 (Audio)")
+    await user.click(screen.getByRole("button", { name: "Convert" }))
+
+    expect(await screen.findByRole("link", { name: "Download MP3" })).toBeInTheDocument()
+  })
+
+  it("renders the failed state with retry and stops polling", async () => {
     const user = userEvent.setup()
     vi.mocked(fetch)
       .mockImplementationOnce(() => createFetchResponse({ status: 201, body: { jobId: JOB_ID } }))
@@ -169,8 +206,34 @@ describe("IndexPage", () => {
     await sleep(4500)
 
     expect(fetch).toHaveBeenCalledTimes(3)
-    expect(screen.getByText(/Processing/)).toBeInTheDocument()
+    expect(screen.getByText("Conversion failed.")).toBeInTheDocument()
+    expect(screen.getByText(/Retry the job using the same URL and format/)).toBeInTheDocument()
+    expect(screen.getByText(new RegExp(JOB_ID))).toBeInTheDocument()
+    expect(screen.getByRole("button", { name: "Retry" })).toBeInTheDocument()
   }, 12000)
+
+  it("returns to the form and restores the previous values after retry", async () => {
+    const user = userEvent.setup()
+    vi.mocked(fetch)
+      .mockImplementationOnce(() => createFetchResponse({ status: 201, body: { jobId: JOB_ID } }))
+      .mockImplementationOnce(() =>
+        createFetchResponse({ body: { jobId: JOB_ID, status: "FAILED" } })
+      )
+
+    renderIndexPage()
+
+    const urlInput = screen.getByPlaceholderText("https://www.youtube.com/watch?v=...")
+    await user.type(urlInput, "https://www.youtube.com/watch?v=dQw4w9WgXcQ")
+    await selectOutputFormat(user, "MP3 (Audio)")
+    await user.click(screen.getByRole("button", { name: "Convert" }))
+
+    await user.click(await screen.findByRole("button", { name: "Retry" }))
+
+    expect(await screen.findByRole("button", { name: "Convert" })).toBeInTheDocument()
+    expect(screen.getByDisplayValue("https://www.youtube.com/watch?v=dQw4w9WgXcQ")).toBeInTheDocument()
+    expect(screen.getByRole("combobox")).toHaveTextContent("MP3")
+    expect(screen.queryByText("Conversion failed.")).not.toBeInTheDocument()
+  })
 
   it("shows an inline error when status polling fails and keeps the job card mounted", async () => {
     vi.mocked(fetch)
@@ -184,6 +247,21 @@ describe("IndexPage", () => {
     expect(await screen.findByText(/Unable to refresh job status\./)).toBeInTheDocument()
     expect(screen.getByText(new RegExp(JOB_ID))).toBeInTheDocument()
     expect(screen.queryByRole("button", { name: "Convert" })).not.toBeInTheDocument()
+  })
+
+  it("shows a retry path when DONE is missing a download URL", async () => {
+    const user = userEvent.setup()
+    vi.mocked(fetch)
+      .mockImplementationOnce(() => createFetchResponse({ status: 201, body: { jobId: JOB_ID } }))
+      .mockImplementationOnce(() => createFetchResponse({ body: { jobId: JOB_ID, status: "DONE" } }))
+
+    renderIndexPage()
+
+    await submitJob(user)
+
+    expect(await screen.findByText("Download unavailable.")).toBeInTheDocument()
+    expect(screen.getByRole("button", { name: "Retry" })).toBeInTheDocument()
+    expect(screen.queryByRole("link", { name: /Download MP4|Download MP3/ })).not.toBeInTheDocument()
   })
 
   it("does not start polling before a job is created", () => {

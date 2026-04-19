@@ -1,7 +1,8 @@
-import { useEffect, useState } from "react"
+import { useState } from "react"
 import { useQuery } from "@tanstack/react-query"
 import { createFileRoute } from "@tanstack/react-router"
-import { ConverterForm } from "@/components/ConverterForm"
+import { ConverterForm, type FormValues } from "@/components/ConverterForm"
+import { Button, buttonVariants } from "@/components/ui/button"
 
 export const Route = createFileRoute("/")({
   component: IndexPage,
@@ -15,20 +16,25 @@ type JobStatusResponse = {
   downloadUrl?: string
 }
 
+const EMPTY_FORM_VALUES: FormValues = {
+  youtubeUrl: "",
+  outputFormat: "MP4",
+}
+
 function isTerminalStatus(status: JobStatus) {
   return status === "DONE" || status === "FAILED"
 }
 
 export function IndexPage() {
-  const [jobId, setJobId] = useState<string | null>(null)
-  const [statusLabel, setStatusLabel] = useState("Job queued")
+  const [activeJobId, setActiveJobId] = useState<string | null>(null)
+  const [draftRequest, setDraftRequest] = useState<FormValues>(EMPTY_FORM_VALUES)
 
   const statusQuery = useQuery({
-    queryKey: ["job-status", jobId],
-    enabled: jobId !== null,
+    queryKey: ["job-status", activeJobId],
+    enabled: activeJobId !== null,
     retry: false,
     queryFn: async (): Promise<JobStatusResponse> => {
-      const response = await fetch(`/api/jobs/${jobId}/status`)
+      const response = await fetch(`/api/jobs/${activeJobId}/status`)
 
       if (!response.ok) {
         throw new Error("Failed to fetch job status")
@@ -47,20 +53,27 @@ export function IndexPage() {
     },
   })
 
-  useEffect(() => {
-    if (jobId === null) {
-      setStatusLabel("Job queued")
-      return
-    }
+  const activeStatus = statusQuery.data?.status
+  const downloadUrl = statusQuery.data?.downloadUrl ?? null
+  const statusLabel = activeStatus === "PROCESSING" ? "Processing" : "Job queued"
+  const isDone = activeStatus === "DONE"
+  const isFailed = activeStatus === "FAILED"
+  const isMissingDownloadUrl = isDone && downloadUrl === null
 
-    if (statusQuery.data?.status === "PENDING") {
-      setStatusLabel("Job queued")
-    }
+  function handleCreatedJob({
+    jobId,
+    request,
+  }: {
+    jobId: string
+    request: FormValues
+  }) {
+    setDraftRequest(request)
+    setActiveJobId(jobId)
+  }
 
-    if (statusQuery.data?.status === "PROCESSING") {
-      setStatusLabel("Processing")
-    }
-  }, [jobId, statusQuery.data?.status])
+  function handleRetry() {
+    setActiveJobId(null)
+  }
 
   return (
     <main className="relative flex min-h-svh flex-col items-center justify-center overflow-hidden px-4">
@@ -100,13 +113,54 @@ export function IndexPage() {
 
         {/* Card */}
         <div className="rounded-xl border border-border bg-card p-6 shadow-2xl">
-          {jobId === null ? (
-            <ConverterForm onSuccess={setJobId} />
+          {activeJobId === null ? (
+            <ConverterForm initialValues={draftRequest} onSuccess={handleCreatedJob} />
+          ) : isDone && downloadUrl !== null ? (
+            <div className="flex flex-col gap-4 py-2 text-center">
+              <div className="flex flex-col gap-2">
+                <p className="text-lg" style={{ fontFamily: "'Instrument Serif', serif" }}>
+                  Your file is ready.
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  Download links expire after 1 hour. If the link has lapsed, resubmit the
+                  conversion.
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  Job ID: <span className="font-mono text-foreground">{activeJobId}</span>
+                </p>
+              </div>
+              <a
+                href={downloadUrl}
+                download
+                className={buttonVariants({ className: "w-full" })}
+              >
+                Download {draftRequest.outputFormat}
+              </a>
+            </div>
+          ) : isFailed || isMissingDownloadUrl ? (
+            <div className="flex flex-col gap-4 py-2 text-center">
+              <div className="flex flex-col gap-2">
+                <p className="text-lg" style={{ fontFamily: "'Instrument Serif', serif" }}>
+                  {isMissingDownloadUrl ? "Download unavailable." : "Conversion failed."}
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  {isMissingDownloadUrl
+                    ? "The conversion completed, but no download link was returned. Please try the job again."
+                    : "This conversion could not be completed. Retry the job using the same URL and format."}
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  Job ID: <span className="font-mono text-foreground">{activeJobId}</span>
+                </p>
+              </div>
+              <Button type="button" onClick={handleRetry} className="w-full">
+                Retry
+              </Button>
+            </div>
           ) : (
             <div className="flex flex-col items-center gap-3 py-4 text-center">
               <span className="inline-block h-2.5 w-2.5 rounded-full bg-primary animate-pulse" />
               <p className="text-sm text-muted-foreground">
-                {statusLabel} — <span className="font-mono text-foreground">{jobId}</span>
+                {statusLabel} — <span className="font-mono text-foreground">{activeJobId}</span>
               </p>
               {statusQuery.isError && (
                 <p className="text-sm text-destructive">Unable to refresh job status.</p>
