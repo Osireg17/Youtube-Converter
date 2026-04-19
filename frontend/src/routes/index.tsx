@@ -32,7 +32,8 @@ export function IndexPage() {
   const statusQuery = useQuery({
     queryKey: ["job-status", activeJobId],
     enabled: activeJobId !== null,
-    retry: false,
+    retry: 3,
+    retryDelay: (attempt) => Math.min(1000 * 2 ** attempt, 10000),
     queryFn: async (): Promise<JobStatusResponse> => {
       const response = await fetch(`/api/jobs/${activeJobId}/status`)
 

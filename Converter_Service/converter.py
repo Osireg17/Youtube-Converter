@@ -100,7 +100,7 @@ def upload_to_s3(local_path: str, job_id: str, output_format: str) -> str:
     ext = "mp3" if output_format == "MP3" else "mp4"
     object_key = f"conversions/{job_id}.{ext}"
     content_type = "audio/mpeg" if output_format == "MP3" else "video/mp4"
-    bucket = os.environ["BUCKET"]
+    bucket = os.environ["BUCKET_NAME"]
     s3 = get_s3_client()
     s3.upload_file(local_path, bucket, object_key, ExtraArgs={"ContentType": content_type})
     logger.info("Uploaded job %s to s3://%s/%s", job_id, bucket, object_key)
