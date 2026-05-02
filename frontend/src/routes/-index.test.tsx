@@ -4,22 +4,9 @@ import userEvent from "@testing-library/user-event"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 import { IndexPage } from "./index"
-
-type MockResponseInit = {
-  ok?: boolean
-  status?: number
-  body?: unknown
-}
+import { createFetchResponse } from "@/test/utils"
 
 const JOB_ID = "123e4567-e89b-12d3-a456-426614174000"
-
-function createFetchResponse({ ok = true, status = 200, body }: MockResponseInit = {}) {
-  return Promise.resolve({
-    ok,
-    status,
-    json: vi.fn().mockResolvedValue(body),
-  } as unknown as Response)
-}
 
 function renderIndexPage() {
   const queryClient = new QueryClient({
