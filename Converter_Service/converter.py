@@ -75,8 +75,9 @@ def update_job_status(job_id: str, status: int, storage_object_key: str = None) 
 
 def build_ydl_opts(output_format: str, output_dir: str) -> dict:
     outtmpl = os.path.join(output_dir, "%(id)s.%(ext)s")
+    cookies_file = os.environ.get("COOKIES_FILE")
     if output_format == "MP3":
-        return {
+        opts = {
             "format": "bestaudio/best",
             "outtmpl": outtmpl,
             "postprocessors": [{
@@ -87,13 +88,17 @@ def build_ydl_opts(output_format: str, output_dir: str) -> dict:
             "quiet": True,
             "no_warnings": True,
         }
-    return {
-        "format": "bestvideo*+bestaudio/best",
-        "outtmpl": outtmpl,
-        "merge_output_format": "mp4",
-        "quiet": True,
-        "no_warnings": True,
-    }
+    else:
+        opts = {
+            "format": "bestvideo*+bestaudio/best",
+            "outtmpl": outtmpl,
+            "merge_output_format": "mp4",
+            "quiet": True,
+            "no_warnings": True,
+        }
+    if cookies_file:
+        opts["cookiefile"] = cookies_file
+    return opts
 
 
 def download_media(youtube_url: str, output_format: str, output_dir: str) -> str:
