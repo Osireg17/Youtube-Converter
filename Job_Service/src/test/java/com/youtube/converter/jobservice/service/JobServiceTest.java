@@ -122,4 +122,17 @@ class JobServiceTest {
         assertNull(response.downloadUrl());
         verify(storageService, never()).generatePresignedDownloadUrl(any());
     }
+
+    @Test
+    void getJobStatus_whenDoneButStorageKeyIsNull_throwsIllegalStateException() {
+        UUID id = UUID.randomUUID();
+
+        Job job = mock(Job.class);
+        when(job.getId()).thenReturn(id);
+        when(job.getStatus()).thenReturn(JobStatus.DONE);
+        when(job.getStorageObjectKey()).thenReturn(null);
+        when(jobRepository.findById(id)).thenReturn(Optional.of(job));
+
+        assertThrows(IllegalStateException.class, () -> jobService.getJobStatus(id));
+    }
 }
